@@ -1,0 +1,50 @@
+From: Sasha Levin <sashal@kernel.org>
+Subject: [RFC PATCH 0/4] Enable Clang's Source-based Code Coverage and MC/DC for x86-64
+Date: Tue, 14 Oct 2025 19:26:35 -0400
+
+This series adds support for Clang's Source-based Code Coverage to the
+Linux kernel, enabling more accurate coverage measurement at the source
+level compared to gcov. This is particularly valuable for safety-critical
+use cases (automotive, medical, aerospace) where MC/DC coverage is required
+for certification.
+
+Changes since previous patchset [1]:
+- Rebased on v6.18-rc1
+- Adapted to lib/crypto reorganization (curve25519 exclusion moved to
+  lib/crypto/Makefile)
+- Minor correctness fixes throughout the codebase
+
+The implementation has been tested with a kernel build using Clang 18+ and
+boots successfully in a KVM environment with instrumentation enabled.
+
+[1] https://lore.kernel.org/all/20240905043245.1389509-1-wentaoz5@illinois.edu/
+
+Wentao Zhang (4):
+  llvm-cov: add Clang's Source-based Code Coverage support
+  llvm-cov: add Clang's MC/DC support
+  x86: disable llvm-cov instrumentation
+  x86: enable llvm-cov support
+
+ Makefile                          |   9 ++
+ arch/Kconfig                      |   1 +
+ arch/x86/Kconfig                  |   2 +
+ arch/x86/crypto/Makefile          |   1 +
+ arch/x86/kernel/vmlinux.lds.S     |   2 +
+ include/asm-generic/vmlinux.lds.h |  36 +++++
+ kernel/Makefile                   |   1 +
+ kernel/llvm-cov/Kconfig           | 121 ++++++++++++++
+ kernel/llvm-cov/Makefile          |   8 +
+ kernel/llvm-cov/fs.c              | 253 ++++++++++++++++++++++++++++++
+ kernel/llvm-cov/llvm-cov.h        | 157 ++++++++++++++++++
+ lib/crypto/Makefile               |   3 +-
+ scripts/Makefile.lib              |  23 +++
+ scripts/mod/modpost.c             |   2 +
+ 14 files changed, 618 insertions(+), 1 deletion(-)
+ create mode 100644 kernel/llvm-cov/Kconfig
+ create mode 100644 kernel/llvm-cov/Makefile
+ create mode 100644 kernel/llvm-cov/fs.c
+ create mode 100644 kernel/llvm-cov/llvm-cov.h
+
+--
+2.51.0
+

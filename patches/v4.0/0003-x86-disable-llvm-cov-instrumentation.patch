@@ -1,0 +1,46 @@
+Subject: [RFC PATCH 3/4] x86: disable llvm-cov instrumentation
+Date: Tue, 14 Oct 2025 19:26:38 -0400
+From: Wentao Zhang <wentaoz5@illinois.edu>
+
+Disable instrumentation for arch/x86/crypto/curve25519-x86_64.c. Otherwise
+compilation would fail with "error: inline assembly requires more registers
+than available".
+
+Similar behavior was reported with gcov as well. See c390c452ebeb ("crypto:
+x86/curve25519 - disable gcov").
+
+Signed-off-by: Wentao Zhang <wentaoz5@illinois.edu>
+Signed-off-by: Sasha Levin <sashal@kernel.org>
+---
+ arch/x86/crypto/Makefile | 1 +
+ lib/crypto/Makefile      | 3 ++-
+ 2 files changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/arch/x86/crypto/Makefile b/arch/x86/crypto/Makefile
+index 2d30d5d361458..9fac64c39766f 100644
+--- a/arch/x86/crypto/Makefile
++++ b/arch/x86/crypto/Makefile
+@@ -77,3 +77,4 @@ aria-aesni-avx2-x86_64-y := aria-aesni-avx2-asm_64.o aria_aesni_avx2_glue.o
+
+ obj-$(CONFIG_CRYPTO_ARIA_GFNI_AVX512_X86_64) += aria-gfni-avx512-x86_64.o
+ aria-gfni-avx512-x86_64-y := aria-gfni-avx512-asm_64.o aria_gfni_avx512_glue.o
++
+diff --git a/lib/crypto/Makefile b/lib/crypto/Makefile
+index bded351aeacef..9a8040ea7b626 100644
+--- a/lib/crypto/Makefile
++++ b/lib/crypto/Makefile
+@@ -81,8 +81,9 @@ libchacha20poly1305-$(CONFIG_CRYPTO_SELFTESTS)	+= chacha20poly1305-selftest.o
+ obj-$(CONFIG_CRYPTO_LIB_CURVE25519) += libcurve25519.o
+ libcurve25519-y := curve25519.o
+
+-# Disable GCOV in odd or sensitive code
++# Disable GCOV and llvm-cov in odd or sensitive code
+ GCOV_PROFILE_curve25519.o := n
++LLVM_COV_PROFILE_curve25519-x86_64.o := n
+
+ ifeq ($(CONFIG_ARCH_SUPPORTS_INT128),y)
+ libcurve25519-$(CONFIG_CRYPTO_LIB_CURVE25519_GENERIC) += curve25519-hacl64.o
+--
+2.51.0
+
+

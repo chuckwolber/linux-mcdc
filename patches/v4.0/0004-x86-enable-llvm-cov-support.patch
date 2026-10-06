@@ -1,0 +1,44 @@
+Subject: [RFC PATCH 4/4] x86: enable llvm-cov support
+Date: Tue, 14 Oct 2025 19:26:39 -0400
+From: Wentao Zhang <wentaoz5@illinois.edu>
+
+Set ARCH_HAS_* options to "y" in kconfig and include section description in
+linker script.
+
+Signed-off-by: Wentao Zhang <wentaoz5@illinois.edu>
+Signed-off-by: Sasha Levin <sashal@kernel.org>
+---
+ arch/x86/Kconfig              | 2 ++
+ arch/x86/kernel/vmlinux.lds.S | 2 ++
+ 2 files changed, 4 insertions(+)
+
+diff --git a/arch/x86/Kconfig b/arch/x86/Kconfig
+index fa3b616af03a2..7764562df838b 100644
+--- a/arch/x86/Kconfig
++++ b/arch/x86/Kconfig
+@@ -90,6 +90,8 @@ config X86
+ 	select ARCH_HAS_FORTIFY_SOURCE
+ 	select ARCH_HAS_GCOV_PROFILE_ALL
+ 	select ARCH_HAS_KCOV			if X86_64
++	select ARCH_HAS_LLVM_COV		if X86_64
++	select ARCH_HAS_LLVM_COV_PROFILE_ALL	if X86_64
+ 	select ARCH_HAS_KERNEL_FPU_SUPPORT
+ 	select ARCH_HAS_MEM_ENCRYPT
+ 	select ARCH_HAS_MEMBARRIER_SYNC_CORE
+diff --git a/arch/x86/kernel/vmlinux.lds.S b/arch/x86/kernel/vmlinux.lds.S
+index d7af4a64c211b..d2caff2a1abff 100644
+--- a/arch/x86/kernel/vmlinux.lds.S
++++ b/arch/x86/kernel/vmlinux.lds.S
+@@ -203,6 +203,8 @@ SECTIONS
+
+ 	BUG_TABLE
+
++	LLVM_COV_DATA
++
+ 	ORC_UNWIND_TABLE
+
+ 	/* Init code and data - will be freed after init */
+--
+2.51.0
+
+
