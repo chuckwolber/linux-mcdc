@@ -1,0 +1,86 @@
+#!/bin/bash
+
+# Credit: https://stackoverflow.com/a/246128
+export SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
+fail() {
+    MSG=$1
+    usage
+    echo "ERROR: ${MSG}"
+    echo "Exiting..."
+    exit 1
+}
+
+usage() {
+    echo "$0 path_to_llvm_project_source"
+    exit 1
+}
+
+log() {
+    MSG=$1
+    echo "${MSG}" | tee --append ${BUILD_LOG}
+}
+
+builds() {
+    git -C ${LLVM_PROJECT} checkout main >> ${BUILD_LOG} 2>&1
+    git -C ${LLVM_PROJECT} pull --prune >> ${BUILD_LOG} 2>&1
+    RELEASES=$( git -C ${LLVM_PROJECT} tag | grep -E llvmorg-[1-9][2-9]\.* | sort --version-sort | grep -v -E "\-rc[0-9]$|\-init$" )
+    BUILDS=${LLVM_PROJECT}/builds
+    for TAG in ${RELEASES}; do
+        MAJOR=$( echo "${TAG}" | sed 's/llvmorg-\([0-9][0-9]\).*/\1/' )
+        if [[ ${MAJOR} -ge 19 ]]; then
+            export C_COMPILER='gcc-16'
+            export CXX_COMPILER='g++-16'
+        elif [[ ${MAJOR} -ge 15 ]]; then
+            export C_COMPILER='gcc-14'
+            export CXX_COMPILER='g++-14'
+        elif [[ ${MAJOR} -ge 12 ]]; then
+            export C_COMPILER='gcc-12'
+            export CXX_COMPILER='g++-12'
+        fi
+        if [[ ! -d ${BUILDS}/${TAG} ]]; then
+            log "Building: ${TAG}::${BUILDS}/${TAG} COMPILERS::${C_COMPILER}/${CXX_COMPILER}"
+            mkdir -p ${BUILDS}/${TAG}
+            build ${TAG} ${BUILDS}
+        fi
+    done
+}
+
+build() {
+    TAG=$1
+    BUILD_DIR=$2
+    cd ${BUILD_DIR}/${TAG}
+    git checkout ${TAG} >> build-${TAG}-${DATE}.log 2>&1
+    cmake -GNinja \
+        -DCMAKE_BUILD_TYPE="Release" \
+        -DCMAKE_C_FLAGS="-pipe" \
+        -DCMAKE_CXX_FLAGS="-pipe" \
+        -DCMAKE_C_COMPILER="${C_COMPILER}" \
+        -DCMAKE_CXX_COMPILER="${CXX_COMPILER}" \
+        -DLLVM_TARGETS_TO_BUILD="X86" \
+        -DLLVM_ENABLE_ASSERTIONS="OFF" \
+        -DLLVM_ENABLE_PROJECTS="clang;lld" \
+        -DLLVM_USE_LINKER="mold" \
+        -DLLVM_ENABLE_RUNTIMES="compiler-rt" \
+        -DLLVM_PARALLEL_LINK_JOBS="2" \
+        -DCMAKE_EXPORT_COMPILE_COMMANDS="ON" \
+        ${LLVM_PROJECT}/llvm >> build-${TAG}-${DATE}.log 2>&1
+    CMAKE_RESULT=$?
+    ninja -j$(nproc) >> build-${TAG}-${DATE}.log 2>&1
+    NINJA_RESULT=$?
+    ${BUILD_DIR}/${TAG}/bin/clang --version >> build-${TAG}-${DATE}.log 2>&1
+    CLANG_RESULT=$?
+    ${BUILD_DIR}/${TAG}/bin/clang++ --version >> build-${TAG}-${DATE}.log 2>&1
+    CLANG_XX_RESULT=$?
+    log "Complete: ${TAG}::CMAKE[${CMAKE_RESULT}]::NINJA[${NINJA_RESULT}]::CLANG[${CLANG_RESULT}]::CLANGXX[${CLANG_XX_RESULT}]"
+}
+
+main() {
+    export LLVM_PROJECT=$1
+    export DATE=$(date +%s)
+    export BUILD_LOG=${SCRIPT_DIR}/build-${DATE}.log
+    [[ ! -d "${LLVM_PROJECT}"/llvm ]] && fail "Missing LLVM source: ${LLVM_PROJECT}"
+    builds
+}
+
+main "$@"
